@@ -1,5 +1,5 @@
 ---
-title: Dl4ds Tutor
+title: Chainlit Base
 emoji: 🏃
 colorFrom: green
 colorTo: red
