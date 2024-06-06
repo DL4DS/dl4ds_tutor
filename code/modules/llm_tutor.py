@@ -36,13 +36,10 @@ class LLMTutor:
         if self.config["embedding_options"]["db_option"] in ["FAISS", "Chroma"]:
             retriever = VectorDBScore(
                 vectorstore=db,
-                search_type="similarity_score_threshold",
-                search_kwargs={
-                    "score_threshold": self.config["embedding_options"][
-                        "score_threshold"
-                    ],
-                    "k": self.config["embedding_options"]["search_top_k"],
-                },
+                # search_kwargs={
+                #     "k": self.config["embedding_options"]["search_top_k"],
+                #     "lambda_mult": self.config["embedding_options"]["lambda_mult"],
+                # },
             )
         elif self.config["embedding_options"]["db_option"] == "RAGatouille":
             retriever = db.as_langchain_retriever(

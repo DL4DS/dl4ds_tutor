@@ -6,7 +6,9 @@ load_dotenv()
 # API Keys - Loaded from the .env file
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 
+opening_message = "Hello! You can ask me questions about the SCC at Boston University."
 
 # Prompt Templates
 
