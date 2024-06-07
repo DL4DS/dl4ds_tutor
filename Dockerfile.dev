@@ -24,4 +24,4 @@ RUN mkdir /.cache && chmod -R 777 /.cache
 # Expose the port the app runs on
 EXPOSE 8051
 
-CMD chainlit run code/main.py --port 8051
+CMD python code/modules/vector_db.py && chainlit run code/main.py --port 8051
