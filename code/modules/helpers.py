@@ -4,6 +4,9 @@ from tqdm import tqdm
 from urllib.parse import urlparse
 import chainlit as cl
 from langchain import PromptTemplate
+import requests
+from bs4 import BeautifulSoup
+
 try:
     from modules.constants import *
 except:
@@ -60,7 +63,7 @@ class WebpageCrawler:
 
     def get_subpage_links(self, l, base_url):
         for link in tqdm(l):
-            print('checking link:', link)
+            print("checking link:", link)
             if not link.endswith("/"):
                 l[link] = "Checked"
                 dict_links_subpages = {}
@@ -109,6 +112,7 @@ def get_base_url(url):
     base_url = f"{parsed_url.scheme}://{parsed_url.netloc}/"
     return base_url
 
+
 def get_prompt(config):
     if config["llm_params"]["use_history"]:
         if config["llm_params"]["llm_loader"] == "local_llm":
@@ -134,67 +138,168 @@ def get_prompt(config):
         )
     return prompt
 
-def get_sources(res, answer):
-    source_elements_dict = {}
-    source_elements = []
-    found_sources = []
 
+def get_sources(res, answer):
+    source_elements = []
     source_dict = {}  # Dictionary to store URL elements
 
     for idx, source in enumerate(res["source_documents"]):
         source_metadata = source.metadata
         url = source_metadata["source"]
+        score = source_metadata.get("score", "N/A")
+        page = source_metadata.get("page", 1)
 
-        if url not in source_dict:
-            source_dict[url] = [source.page_content]
+        lecture_tldr = source_metadata.get("tldr", "N/A")
+        lecture_recording = source_metadata.get("lecture_recording", "N/A")
+        suggested_readings = source_metadata.get("suggested_readings", "N/A")
+        date = source_metadata.get("date", "N/A")
+
+        source_type = source_metadata.get("source_type", "N/A")
+
+        url_name = f"{url}_{page}"
+        if url_name not in source_dict:
+            source_dict[url_name] = {
+                "text": source.page_content,
+                "url": url,
+                "score": score,
+                "page": page,
+                "lecture_tldr": lecture_tldr,
+                "lecture_recording": lecture_recording,
+                "suggested_readings": suggested_readings,
+                "date": date,
+                "source_type": source_type,
+            }
         else:
-            source_dict[url].append(source.page_content)
+            source_dict[url_name]["text"] += f"\n\n{source.page_content}"
 
-    for source_idx, (url, text_list) in enumerate(source_dict.items()):
-        full_text = ""
-        for url_idx, text in enumerate(text_list):
-            full_text += f"Source {url_idx+1}:\n {text}\n\n\n"
-        source_elements.append(cl.Text(name=url, content=full_text))
-        found_sources.append(url)
+    # First, display the answer
+    full_answer = "**Answer:**\n"
+    full_answer += answer
 
-    if found_sources:
-        answer += f"\n\nSources: {', '.join(found_sources)} "
-    else:
-        answer += f"\n\nNo source found."
+    # Then, display the sources
+    full_answer += "\n\n**Sources:**\n"
+    for idx, (url_name, source_data) in enumerate(source_dict.items()):
+        full_answer += f"\nSource {idx + 1} (Score: {source_data['score']}): {source_data['url']}\n"
 
-    # for idx, source in enumerate(res["source_documents"]):
-    #     title = source.metadata["source"]
+        name = f"Source {idx + 1} Text\n"
+        full_answer += name
+        source_elements.append(cl.Text(name=name, content=source_data["text"]))
 
-    #     if title not in source_elements_dict:
-    #         source_elements_dict[title] = {
-    #             "page_number": [source.metadata["page"]],
-    #             "url": source.metadata["source"],
-    #             "content": source.page_content,
-    #         }
+        # Add a PDF element if the source is a PDF file
+        if source_data["url"].lower().endswith(".pdf"):
+            name = f"Source {idx + 1} PDF\n"
+            full_answer += name
+            pdf_url = f"{source_data['url']}#page={source_data['page']+1}"
+            source_elements.append(cl.Pdf(name=name, url=pdf_url))
 
-    #     else:
-    #         source_elements_dict[title]["page_number"].append(source.metadata["page"])
-    #     source_elements_dict[title][
-    #         "content_" + str(source.metadata["page"])
-    #     ] = source.page_content
-    #     # sort the page numbers
-    #     # source_elements_dict[title]["page_number"].sort()
+    # Finally, include lecture metadata for each unique source
+    # displayed_urls = set()
+    # full_answer += "\n**Metadata:**\n"
+    # for url_name, source_data in source_dict.items():
+    #     if source_data["url"] not in displayed_urls:
+    #         full_answer += f"\nSource: {source_data['url']}\n"
+    #         full_answer += f"Type: {source_data['source_type']}\n"
+    #         full_answer += f"TL;DR: {source_data['lecture_tldr']}\n"
+    #         full_answer += f"Lecture Recording: {source_data['lecture_recording']}\n"
+    #         full_answer += f"Suggested Readings: {source_data['suggested_readings']}\n"
+    #         displayed_urls.add(source_data["url"])
+    full_answer += "\n**Metadata:**\n"
+    for url_name, source_data in source_dict.items():
+        full_answer += f"\nSource: {source_data['url']}\n"
+        full_answer += f"Page: {source_data['page']}\n"
+        full_answer += f"Type: {source_data['source_type']}\n"
+        full_answer += f"Date: {source_data['date']}\n"
+        full_answer += f"TL;DR: {source_data['lecture_tldr']}\n"
+        full_answer += f"Lecture Recording: {source_data['lecture_recording']}\n"
+        full_answer += f"Suggested Readings: {source_data['suggested_readings']}\n"
 
-    # for title, source in source_elements_dict.items():
-    #     # create a string for the page numbers
-    #     page_numbers = ", ".join([str(x) for x in source["page_number"]])
-    #     text_for_source = f"Page Number(s): {page_numbers}\nURL: {source['url']}"
-    #     source_elements.append(cl.Pdf(name="File", path=title))
-    #     found_sources.append("File")
-    #     # for pn in source["page_number"]:
-    #     #     source_elements.append(
-    #     #         cl.Text(name=str(pn), content=source["content_"+str(pn)])
-    #     #     )
-    #     #     found_sources.append(str(pn))
+    return full_answer, source_elements
 
-    # if found_sources:
-    #     answer += f"\nSource:{', '.join(found_sources)}"
-    # else:
-    #     answer += f"\nNo source found."
 
-    return answer, source_elements
+def get_lecture_metadata(lectures_url, schedule_url):
+    """
+    Function to get the lecture metadata from the lectures and schedule URLs.
+    """
+    lecture_metadata = {}
+
+    # Get the main lectures page content
+    r_lectures = requests.get(lectures_url)
+    soup_lectures = BeautifulSoup(r_lectures.text, "html.parser")
+
+    # Get the main schedule page content
+    r_schedule = requests.get(schedule_url)
+    soup_schedule = BeautifulSoup(r_schedule.text, "html.parser")
+
+    # Find all lecture blocks
+    lecture_blocks = soup_lectures.find_all("div", class_="lecture-container")
+
+    # Create a mapping from slides link to date
+    date_mapping = {}
+    schedule_rows = soup_schedule.find_all("li", class_="table-row-lecture")
+    for row in schedule_rows:
+        try:
+            date = (
+                row.find("div", {"data-label": "Date"}).get_text(separator=" ").strip()
+            )
+            description_div = row.find("div", {"data-label": "Description"})
+            slides_link_tag = description_div.find("a", title="Download slides")
+            slides_link = slides_link_tag["href"].strip() if slides_link_tag else None
+            slides_link = (
+                f"https://dl4ds.github.io{slides_link}" if slides_link else None
+            )
+            if slides_link:
+                date_mapping[slides_link] = date
+        except Exception as e:
+            print(f"Error processing schedule row: {e}")
+            continue
+
+    for block in lecture_blocks:
+        try:
+            # Extract the lecture title
+            title = block.find("span", style="font-weight: bold;").text.strip()
+
+            # Extract the TL;DR
+            tldr = block.find("strong", text="tl;dr:").next_sibling.strip()
+
+            # Extract the link to the slides
+            slides_link_tag = block.find("a", title="Download slides")
+            slides_link = slides_link_tag["href"].strip() if slides_link_tag else None
+            slides_link = (
+                f"https://dl4ds.github.io{slides_link}" if slides_link else None
+            )
+
+            # Extract the link to the lecture recording
+            recording_link_tag = block.find("a", title="Download lecture recording")
+            recording_link = (
+                recording_link_tag["href"].strip() if recording_link_tag else None
+            )
+
+            # Extract suggested readings or summary if available
+            suggested_readings_tag = block.find("p", text="Suggested Readings:")
+            if suggested_readings_tag:
+                suggested_readings = suggested_readings_tag.find_next_sibling("ul")
+                if suggested_readings:
+                    suggested_readings = suggested_readings.get_text(
+                        separator="\n"
+                    ).strip()
+                else:
+                    suggested_readings = "No specific readings provided."
+            else:
+                suggested_readings = "No specific readings provided."
+
+            # Get the date from the schedule
+            date = date_mapping.get(slides_link, "No date available")
+
+            # Add to the dictionary
+            lecture_metadata[slides_link] = {
+                "date": date,
+                "tldr": tldr,
+                "title": title,
+                "lecture_recording": recording_link,
+                "suggested_readings": suggested_readings,
+            }
+        except Exception as e:
+            print(f"Error processing block: {e}")
+            continue
+
+    return lecture_metadata

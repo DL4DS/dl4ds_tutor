@@ -8,11 +8,10 @@ from langchain.llms import CTransformers
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.chains.conversational_retrieval.prompts import QA_PROMPT
 import os
-
 from modules.constants import *
 from modules.helpers import get_prompt
 from modules.chat_model_loader import ChatModelLoader
-from modules.vector_db import VectorDB
+from modules.vector_db import VectorDB, VectorDBScore
 
 
 class LLMTutor:
@@ -34,19 +33,32 @@ class LLMTutor:
 
     # Retrieval QA Chain
     def retrieval_qa_chain(self, llm, prompt, db):
+        if self.config["embedding_options"]["db_option"] in ["FAISS", "Chroma"]:
+            retriever = VectorDBScore(
+                vectorstore=db,
+                search_type="similarity_score_threshold",
+                search_kwargs={
+                    "score_threshold": self.config["embedding_options"][
+                        "score_threshold"
+                    ],
+                    "k": self.config["embedding_options"]["search_top_k"],
+                },
+            )
+        elif self.config["embedding_options"]["db_option"] == "RAGatouille":
+            retriever = db.as_langchain_retriever(
+                k=self.config["embedding_options"]["search_top_k"]
+            )
         if self.config["llm_params"]["use_history"]:
             memory = ConversationBufferWindowMemory(
-            k = self.config["llm_params"]["memory_window"], 
-            memory_key="chat_history", return_messages=True, output_key="answer"
+                k=self.config["llm_params"]["memory_window"],
+                memory_key="chat_history",
+                return_messages=True,
+                output_key="answer",
             )
             qa_chain = ConversationalRetrievalChain.from_llm(
                 llm=llm,
                 chain_type="stuff",
-                retriever=db.as_retriever(
-                    search_kwargs={
-                        "k": self.config["embedding_options"]["search_top_k"]
-                    }
-                ),
+                retriever=retriever,
                 return_source_documents=True,
                 memory=memory,
                 combine_docs_chain_kwargs={"prompt": prompt},
@@ -55,11 +67,7 @@ class LLMTutor:
             qa_chain = RetrievalQA.from_chain_type(
                 llm=llm,
                 chain_type="stuff",
-                retriever=db.as_retriever(
-                    search_kwargs={
-                        "k": self.config["embedding_options"]["search_top_k"]
-                    }
-                ),
+                retriever=retriever,
                 return_source_documents=True,
                 chain_type_kwargs={"prompt": prompt},
             )
