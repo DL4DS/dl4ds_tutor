@@ -14,6 +14,63 @@ from dotenv import load_dotenv
 from modules.llm_tutor import LLMTutor
 from modules.constants import *
 from modules.helpers import get_sources
+from fastapi import FastAPI
+# from modules.auth_fastapi import router as auth_router
+# import firebase_admin
+# from firebase_admin import credentials, auth
+from fastapi import Depends
+from chainlit.oauth_providers import get_oauth_provider
+from langchain.memory import ConversationBufferMemory
+from chainlit.types import ThreadDict
+
+# app = FastAPI()
+
+# app.include_router(auth_router)
+import os
+# print(f"Current working directory: {os.getcwd()}")
+# # Initialize Firebase Admin
+# cred = credentials.Certificate('code/modules/famous-tree-389606-firebase-adminsdk-iljhx-0358d21dde.json')
+# firebase_admin.initialize_app(cred)
+
+# # Define your OAuth callback for Google
+# @cl.oauth_callback
+# async def oauth_callback(token: dict = Depends(get_oauth_provider)):
+#     # The token dictionary will contain the OAuth tokens needed to authenticate with Firebase
+#     id_token = token.get('id_token')
+#     decoded_token = auth.verify_id_token(id_token)
+#     uid = decoded_token.get('uid')
+    
+#     try:
+#         # Try to get the user from Firebase
+#         user = auth.get_user(uid)
+#     except auth.UserNotFoundError:
+#         # If user is not found, create a new one using details from the decoded token
+#         user = auth.create_user(
+#             uid=uid,
+#             email=decoded_token.get('email'),
+#             display_name=decoded_token.get('name'),
+#             photo_url=decoded_token.get('picture')
+#         )
+    
+#     # Set the user info in Chainlit session
+#     cl.user_session.set("user", user)
+    
+#     # You can now create a custom response or redirect the user
+#     return {"message": "User authenticated successfully", "user_id": user.uid}
+
+
+# simple chainlit oauth decorator
+from typing import Dict, Optional
+import chainlit as cl
+
+@cl.oauth_callback
+def oauth_callback(
+  provider_id: str,
+  token: str,
+  raw_user_data: Dict[str, str],
+  default_user: cl.User,
+) -> Optional[cl.User]:
+  return default_user
 
 
 logger = logging.getLogger(__name__)
@@ -92,6 +149,9 @@ async def start():
 
     llm_tutor = LLMTutor(config, logger=logger)
 
+    #claude
+    cl.user_session.set("memory", ConversationBufferMemory(return_messages=True))
+
     chain = llm_tutor.qa_bot()
     model = config["llm_params"]["local_llm_params"]["model"]
     msg = cl.Message(content=f"Starting the bot {model}...")
@@ -101,9 +161,70 @@ async def start():
 
     cl.user_session.set("chain", chain)
 
+# trying resume chat decorator
+@cl.on_chat_resume
+async def on_chat_resume(thread: ThreadDict):
+    memory = ConversationBufferMemory(return_messages=True)
+    root_messages = [m for m in thread["steps"] if m["parentId"] == None]
+    # for message in root_messages:
+        # if message["type"] == "user_message":
+        #     memory.chat_memory.add_user_message(message["output"])
+        # else:
+        #     memory.chat_memory.add_ai_message(message["output"])
+    
+    
+    #claude
+    for message in root_messages:
+        if message["type"] == "user_message":
+            memory.chat_memory.add_user_message(message["output"])
+            await cl.Message(content=message["output"], author="User").send()
+        else:
+            memory.chat_memory.add_ai_message(message["output"])
+            await cl.Message(content=message["output"], author="Assistant").send()
+
+
+    cl.user_session.set("memory", memory)
+
+import json
+import chainlit as cl
+
+import chainlit as cl
+
+import chainlit as cl
+
+# @cl.on_message
+# async def main(message: cl.Message):
+#     user = cl.user_session.get("user")
+#     chain = cl.user_session.get("chain")
+#     memory = cl.user_session.get("memory")
+
+#     # Use the context manager for creating a user step
+#     async with cl.Step(name="user_message") as user_step:
+#         user_step.input = message.content
+
+#         # Execute the chain call to get a response
+#         res = await chain.acall({"question": message.content, "chat_history": memory.chat_memory.messages})
+#         print(f"response: {res}")
+
+#         # Extract 'answer' directly from the response, fallback to "No answer found." if not available
+#         answer = res.get("answer", "No answer found.")
+#         print(f"answer: {answer}")
+
+#         # Set the output of the user_step to include the answer
+#         user_step.output = answer
+
+#         # Update memory with the conversation
+#         # Add the user message to the chat memory
+#         memory.chat_memory.add_user_message(message.content)
+#         # Add only the 'answer' to the chat memory, not the entire response or any serialized version
+#         memory.chat_memory.add_ai_message(answer)
+
+#         answer_with_sources, source_elements = get_sources(res, answer)
+#         print(f"answer_with_sources: {answer_with_sources}")
+#         await cl.Message(content=answer_with_sources, elements=source_elements).send()
 
 @cl.on_message
-async def main(message):
+async def main(message: cl.Message):
     user = cl.user_session.get("user")
     chain = cl.user_session.get("chain")
     # cb = cl.AsyncLangchainCallbackHandler(
