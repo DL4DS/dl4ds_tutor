@@ -17,6 +17,9 @@ You can find an implementation of the Tutor at https://dl4ds-dl4ds-tutor.hf.spac
 
 To run locally, 
 
+You need to set up API keys for OpenAI and LlamaCloud. You can get the OpenAI API key from [here](https://platform.openai.com/docs/guides/authentication) and the LlamaCloud API key from [here](https://llamacloud.com/docs/api/). 
+Set these as environment variables (OPENAI_API_KEY and LLAMA_CLOUD_API_KEY) in your workspace. 
+
 Clone the repository from: https://github.com/DL4DS/dl4ds_tutor    
 
 Put your data under the `storage/data` directory. Note: You can add urls in the urls.txt file, and other pdf files in the `storage/data` directory.    
