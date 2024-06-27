@@ -9,3 +9,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "Starting this workflow test!"
+      - run: echo "This workflow is pushed in a new commit"
