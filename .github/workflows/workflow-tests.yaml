@@ -6,8 +6,8 @@ on: [push]
 
 jobs:
   Try-GH-Workflows:
-    runs-on: [ubuntu-latest, GPU]
+    runs-on: ubuntu-latest
     steps:
       - run: echo "Starting this workflow test!"
       - run: echo "This workflow is pushed in a new commit"
-      - run: echo "And it is on an Ubuntu GPU Runner"
+
