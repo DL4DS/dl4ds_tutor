@@ -1,0 +1,11 @@
+# YAML script to experiment with GH Workflows and Actions
+name: GitHub Workflow and Actions Tests
+run-name: ${{ github.actor }} is running this workflow
+
+on: [push]
+
+jobs:
+  Try-GH-Workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Starting this workflow test!"
