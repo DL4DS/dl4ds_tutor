@@ -441,14 +441,15 @@ class Chatbot:
         cl.user_session.set("memory", conversation_list)
         await self.start(config=thread_config)
 
-    @cl.oauth_callback
-    def auth_callback(
-        provider_id: str,
-        token: str,
-        raw_user_data: Dict[str, str],
-        default_user: cl.User,
-    ) -> Optional[cl.User]:
-        return default_user
+    # TODO: Handle OAuth in app.py
+    # @cl.oauth_callback
+    # def auth_callback(
+    #     provider_id: str,
+    #     token: str,
+    #     raw_user_data: Dict[str, str],
+    #     default_user: cl.User,
+    # ) -> Optional[cl.User]:
+    #     return default_user
 
     async def on_follow_up(self, action: cl.Action):
         message = await cl.Message(
