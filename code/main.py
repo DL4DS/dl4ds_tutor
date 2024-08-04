@@ -460,10 +460,9 @@ class Chatbot:
         await self.main(message)
 
 
-chatbot = Chatbot(config=config)
-
-
-async def start_app():
+async def start_chainlit_app(user=None):
+    print(f"\nStarting app for user: {user}\n")
+    chatbot = Chatbot(config=config)
     cl_data._data_layer = await setup_data_layer()
     chatbot.literal_client = cl_data._data_layer.client if cl_data._data_layer else None
     cl.set_starters(chatbot.set_starters)
@@ -475,4 +474,8 @@ async def start_app():
     cl.action_callback("follow up question")(chatbot.on_follow_up)
 
 
-asyncio.run(start_app())
+print(__name__)
+if __name__ == "main.py":  # TODO: Is this correct?
+    print("I am here")
+    # Flask app runs start_chainlit_app() inisde app.py
+    asyncio.run(start_chainlit_app())
