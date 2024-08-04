@@ -475,7 +475,7 @@ async def start_chainlit_app(user=None):
 
 
 print(__name__)
-if __name__ == "main.py":  # TODO: Is this correct?
+if __name__ == "__main__":
     print("I am here")
     # Flask app runs start_chainlit_app() inisde app.py
     asyncio.run(start_chainlit_app())

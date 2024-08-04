@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <title>Dashboard</title>
     <style>
         body, html {
             margin: 0;
@@ -42,34 +42,37 @@
             cursor: pointer;
         }
 
-        .guest-button {
-            background-color: #007bff;
+        .start-button {
+            background-color: #28a745;
             color: white;
         }
 
-        .guest-button:hover {
-            background-color: #0056b3;
+        .start-button:hover {
+            background-color: #218838;
         }
 
-        .google-button {
-            background-color: #db4437;
+        .instructor-button {
+            background-color: #6c757d;
             color: white;
         }
 
-        .google-button:hover {
-            background-color: #c23321;
+        .instructor-button:hover {
+            background-color: #5a6268;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Login</h1>
-        <form action="/login/guest" method="post">
-            <button type="submit" class="button guest-button">Sign in as Guest</button>
+        <h1>Welcome, {{ username }}</h1>
+        <p>Please choose an option:</p>
+        <form action="/start-tutor" method="post">
+            <button type="submit" class="button start-button">Start AI Tutor</button>
         </form>
-        <form action="/login/google" method="get">
-            <button type="submit" class="button google-button">Sign in with Google</button>
+        {% if role == "instructor" %}
+        <form action="/start-instructor" method="post">
+            <button type="submit" class="button instructor-button">Start Instructor Version</button>
         </form>
+        {% endif %}
     </div>
 </body>
 </html>
