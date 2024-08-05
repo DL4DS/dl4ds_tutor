@@ -21,6 +21,10 @@ import copy
 from typing import Optional
 from chainlit.types import ThreadDict
 import time
+import json
+import base64
+from typing import Optional, Dict
+from fastapi import Request, Response
 
 USER_TIMEOUT = 60_000
 SYSTEM = "System 🖥️"
@@ -33,7 +37,37 @@ with open("modules/config/config.yml", "r") as f:
     config = yaml.safe_load(f)
 
 
-async def setup_data_layer():
+@cl.header_auth_callback
+def header_auth_callback(headers: dict) -> Optional[cl.User]:
+
+    print("\n\n\nI am here\n\n\n")
+    # try: # TODO: Add try-except block after testing
+    # TODO: Implement to get the user information from the headers (not the cookie)
+    cookie = headers.get("cookie")  # gets back a str
+    cookie_pairs = cookie.split("; ")
+    # Create a dictionary from the pairs
+    cookie_dict = {}
+    for pair in cookie.split("; "):
+        key, value = pair.split("=", 1)
+        # Strip surrounding quotes if present
+        cookie_dict[key] = value.strip('"')
+
+    decoded_user_info = base64.b64decode(cookie_dict.get("X-User-Info", "")).decode()
+    decoded_user_info = json.loads(decoded_user_info)
+
+    return cl.User(
+        identifier=decoded_user_info["email"],
+        metadata={
+            "name": decoded_user_info["name"],
+            "avatar": decoded_user_info["profile_image"],
+        },
+    )
+    # except Exception as e:
+    #     print(e)
+    #     return None
+
+
+def setup_data_layer():
     """
     Set up the data layer for chat logging.
     """
@@ -282,11 +316,16 @@ class Chatbot:
         rename_dict = {"Chatbot": "AI Tutor"}
         return rename_dict.get(orig_author, orig_author)
 
-    async def start(self, config=None):
+    async def start(self):
         """
         Start the chatbot, initialize settings widgets,
         and display and load previous conversation if chat logging is enabled.
         """
+
+        print("\n\nHERE!!!!")
+        print(cl.config)
+        print(cl.context.session.user)
+        print("\n\n\n")
 
         start_time = time.time()
 
@@ -460,10 +499,9 @@ class Chatbot:
         await self.main(message)
 
 
-async def start_chainlit_app(user=None):
-    print(f"\nStarting app for user: {user}\n")
+def start_chainlit_app():
     chatbot = Chatbot(config=config)
-    cl_data._data_layer = await setup_data_layer()
+    cl_data._data_layer = setup_data_layer()
     chatbot.literal_client = cl_data._data_layer.client if cl_data._data_layer else None
     cl.set_starters(chatbot.set_starters)
     cl.author_rename(chatbot.rename)
@@ -474,8 +512,4 @@ async def start_chainlit_app(user=None):
     cl.action_callback("follow up question")(chatbot.on_follow_up)
 
 
-print(__name__)
-if __name__ == "__main__":
-    print("I am here")
-    # Flask app runs start_chainlit_app() inisde app.py
-    asyncio.run(start_chainlit_app())
+start_chainlit_app()

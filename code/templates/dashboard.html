@@ -119,7 +119,7 @@
         <form action="/start-tutor" method="post">
             <button type="submit" class="button start-button">Start AI Tutor</button>
         </form>
-        {% if role == "instructor" %}
+        {% if "instructor" in role %}
         <form action="/start-instructor" method="post">
             <button type="submit" class="button instructor-button">Start Instructor Version</button>
         </form>
