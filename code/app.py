@@ -134,8 +134,9 @@ async def post_signin(request: Request, user_info: dict = Depends(get_user_info)
     if user_info:
         username = user_info["email"]
         role = get_user_role(username)
+        jwt_token = request.cookies.get("X-User-Info")
         return templates.TemplateResponse(
-            "dashboard.html", {"request": request, "username": username, "role": role}
+            "dashboard.html", {"request": request, "username": username, "role": role, "jwt_token": jwt_token}
         )
     return RedirectResponse("/")
 

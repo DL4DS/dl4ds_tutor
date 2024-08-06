@@ -125,5 +125,10 @@
         </form>
         {% endif %}
     </div>
+    <script>
+        let token = "{{ jwt_token }}";
+        console.log("Token: ", token);
+        localStorage.setItem('token', token);
+    </script>
 </body>
 </html>
